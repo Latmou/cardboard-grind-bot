@@ -7,7 +7,8 @@
     "start": "node dist/index.js",
     "build": "tsc",
     "dev": "ts-node src/index.ts",
-    "register": "node dist/register-commands.js"
+    "register": "node dist/register-commands.js",
+    "fetch": "ts-node src/fetch.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",

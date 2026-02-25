@@ -15,12 +15,9 @@ WORKDIR /app
 
 COPY package*.json ./
 # Rebuild native modules for the current environment
-RUN npm install && npm rebuild better-sqlite3
+RUN npm install
 
 COPY . .
 RUN npm run build
-
-# Create data directory for SQLite
-RUN mkdir -p /app/data
 
 CMD ["npm", "start"]

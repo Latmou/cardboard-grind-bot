@@ -1,5 +1,5 @@
 import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType } from 'discord.js';
-import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, ScoreRow } from './db';
+import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow } from './db';
 import { generateRankChart } from './chart';
 import { Taunt } from './taunt';
 import dotenv from 'dotenv';
@@ -123,8 +123,12 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
 
     console.log(`[${new Date().toISOString()}] Selected Chart Taunt for ${actualName}: "${taunt}"`);
 
+    const lastUpdateTs = await getLastTimestamp();
+    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString();
+    const footer = `\n*Last data update: ${lastUpdateDate}*`;
+
     await interaction.editReply({
-      content: taunt,
+      content: taunt + footer,
       files: [attachment]
     });
   } catch (error) {
@@ -194,6 +198,10 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
 
     console.log(`[${new Date().toISOString()}] Selected Leaderboard Taunt: "${taunt}"`);
 
+    const lastUpdateTs = await getLastTimestamp();
+    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString();
+    const footer = `\n*Last data update: ${lastUpdateDate}*`;
+
     let response = `${taunt}\n\`\`\`\n`;
     response += `Rank | Name${' '.repeat(20)} | Score\n`;
     response += `-`.repeat(40) + `\n`;
@@ -215,6 +223,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       response += line;
     }
     response += `\`\`\``;
+    response += footer;
     
     await interaction.editReply(response);
   } catch (error) {

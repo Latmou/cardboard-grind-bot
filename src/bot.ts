@@ -48,6 +48,8 @@ export function startBot() {
       await handleChartCommand(interaction);
     } else if (interaction.commandName === 'leaderboard') {
       await handleLeaderboardCommand(interaction);
+    } else if (interaction.commandName === 'help') {
+      await handleHelpCommand(interaction);
     }
   });
 
@@ -219,4 +221,22 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     console.error(error);
     await interaction.editReply('An error occurred while fetching the leaderboard.');
   }
+}
+
+async function handleHelpCommand(interaction: ChatInputCommandInteraction) {
+  const helpMessage = `
+**Cardboard Grind Bot - The Finals Leaderboard Bot**
+This bot fetches and visualizes leaderboard data for "The Finals".
+
+**Available Commands:**
+• \`/rs [name] [days]\`: Displays a player's **rank score** (RS) chart over the last X days.
+• \`/rank [name] [days]\`: Displays a player's **rank position** chart over the last X days.
+• \`/leaderboard\`: Displays the current top 50 players globally.
+• \`/leaderboard guild:true\`: Displays a leaderboard for members of this Discord server.
+• \`/leaderboard name:[player]\`: Displays the leaderboard centered around a specific player.
+• \`/help\`: Displays this help message.
+
+*Note: Use at least 3 characters for player name searches.*
+  `;
+  await interaction.reply({ content: helpMessage, ephemeral: true });
 }

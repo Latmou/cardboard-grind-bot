@@ -49,6 +49,11 @@ const commands = [
         .setRequired(false))
     .setContexts([0, 1, 2])
     .setIntegrationTypes([0, 1]),
+  new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Displays help information and available commands')
+    .setContexts([0, 1, 2])
+    .setIntegrationTypes([0, 1]),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);

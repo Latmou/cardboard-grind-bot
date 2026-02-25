@@ -1,45 +1,30 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbPath = process.env.DATABASE_PATH || './data/database.sqlite';
-const dbDir = path.dirname(dbPath);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://botuser:botpassword@db:5432/finalsdb',
+});
 
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+// Initialize database
+export async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS scores (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      rank INTEGER,
+      rankScore INTEGER,
+      league TEXT,
+      leagueNumber INTEGER,
+      clubTag TEXT,
+      timestamp INTEGER NOT NULL,
+      season TEXT
+    )
+  `);
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_name_timestamp_season ON scores (name, timestamp, season)`);
 }
-
-const db = new Database(dbPath);
-
-// Create table if it doesn't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    rank INTEGER,
-    rankScore INTEGER,
-    league TEXT,
-    leagueNumber INTEGER,
-    clubTag TEXT,
-    timestamp INTEGER NOT NULL,
-    season TEXT
-  )
-`);
-
-// Add season column if it doesn't exist (for migration)
-try {
-  db.exec('ALTER TABLE scores ADD COLUMN season TEXT');
-} catch (e) {
-  // Column already exists or table is new
-}
-
-// Create index for faster searching
-db.exec(`CREATE INDEX IF NOT EXISTS idx_name_timestamp_season ON scores (name, timestamp, season)`);
-
-export default db;
 
 export interface ScoreRow {
   name: string;
@@ -54,81 +39,159 @@ export interface ScoreRow {
 
 const CURRENT_SEASON = process.env.THE_FINALS_SEASON || 's4';
 
-export function saveScores(scores: ScoreRow[]) {
-  const insert = db.prepare(`
-    INSERT INTO scores (name, rank, rankScore, league, leagueNumber, clubTag, timestamp, season)
-    VALUES (@name, @rank, @rankScore, @league, @leagueNumber, @clubTag, @timestamp, @season)
-  `);
+export async function saveScores(scores: ScoreRow[]) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const query = `
+      INSERT INTO scores (name, rank, rankScore, league, leagueNumber, clubTag, timestamp, season)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `;
 
-  const insertMany = db.transaction((rows: ScoreRow[]) => {
-    for (const row of rows) {
-      if (!row.season) row.season = CURRENT_SEASON;
-      insert.run(row);
+    for (const row of scores) {
+      const season = row.season || CURRENT_SEASON;
+      await client.query(query, [
+        row.name,
+        row.rank,
+        row.rankScore,
+        row.league,
+        row.leagueNumber,
+        row.clubTag,
+        row.timestamp,
+        season
+      ]);
     }
-  });
-
-  insertMany(scores);
+    await client.query('COMMIT');
+    console.log(`[${new Date().toISOString()}] Successfully saved ${scores.length} scores to Postgres.`);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
-export function getPlayerScores(name: string, days: number) {
+export async function deleteOldScores(months: number = 3) {
+  const cutoff = Math.floor(Date.now() / 1000) - (months * 30 * 24 * 60 * 60);
+  const result = await pool.query('DELETE FROM scores WHERE timestamp < $1', [cutoff]);
+  if (result.rowCount && result.rowCount > 0) {
+    console.log(`[${new Date().toISOString()}] Deleted ${result.rowCount} scores older than ${months} months.`);
+  }
+  return result.rowCount;
+}
+
+export async function getLastTimestamp(): Promise<number> {
+  const result = await pool.query('SELECT MAX(timestamp) as max_ts FROM scores');
+  return parseInt(result.rows[0]?.max_ts || '0');
+}
+
+export async function getPlayerScores(name: string, days: number): Promise<ScoreRow[]> {
   const cutoff = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
-  return db.prepare(`
+  const result = await pool.query(`
     SELECT * FROM scores 
-    WHERE name LIKE ? AND timestamp >= ? AND season = ?
+    WHERE name ILIKE $1 AND timestamp >= $2 AND season = $3
     ORDER BY timestamp ASC
-  `).all(`%${name}%`, cutoff, CURRENT_SEASON) as ScoreRow[];
+  `, [`%${name}%`, cutoff, CURRENT_SEASON]);
+  
+  return result.rows.map(row => ({
+    name: row.name,
+    rank: row.rank,
+    rankScore: row.rankscore,
+    league: row.league,
+    leagueNumber: row.leaguenumber,
+    clubTag: row.clubtag,
+    timestamp: row.timestamp,
+    season: row.season
+  }));
 }
 
-export function getTopPlayers(limit: number = 50) {
-  const latestTimestamp = db.prepare('SELECT MAX(timestamp) as maxTs FROM scores WHERE season = ?').get(CURRENT_SEASON) as { maxTs: number };
-  if (!latestTimestamp || !latestTimestamp.maxTs) return [];
+export async function getTopPlayers(limit: number = 50): Promise<ScoreRow[]> {
+  const latestRes = await pool.query('SELECT MAX(timestamp) as max_ts FROM scores WHERE season = $1', [CURRENT_SEASON]);
+  const latestTimestamp = latestRes.rows[0]?.max_ts;
+  if (!latestTimestamp) return [];
 
-  return db.prepare(`
+  const result = await pool.query(`
     SELECT * FROM scores 
-    WHERE timestamp = ? AND season = ?
+    WHERE timestamp = $1 AND season = $2
     ORDER BY rank ASC 
-    LIMIT ?
-  `).all(latestTimestamp.maxTs, CURRENT_SEASON, limit) as ScoreRow[];
+    LIMIT $3
+  `, [latestTimestamp, CURRENT_SEASON, limit]);
+
+  return result.rows.map(row => ({
+    name: row.name,
+    rank: row.rank,
+    rankScore: row.rankscore,
+    league: row.league,
+    leagueNumber: row.leaguenumber,
+    clubTag: row.clubtag,
+    timestamp: row.timestamp,
+    season: row.season
+  }));
 }
 
-export function getPlayersByNames(names: string[], daysAgo: number = 0) {
+export async function getPlayersByNames(names: string[], daysAgo: number = 0): Promise<ScoreRow[]> {
   let targetTimestamp: number;
   if (daysAgo === 0) {
-    const latest = db.prepare('SELECT MAX(timestamp) as maxTs FROM scores WHERE season = ?').get(CURRENT_SEASON) as { maxTs: number };
-    if (!latest || !latest.maxTs) return [];
-    targetTimestamp = latest.maxTs;
+    const latest = await pool.query('SELECT MAX(timestamp) as max_ts FROM scores WHERE season = $1', [CURRENT_SEASON]);
+    if (!latest.rows[0]?.max_ts) return [];
+    targetTimestamp = latest.rows[0].max_ts;
   } else {
     const cutoff = Math.floor(Date.now() / 1000) - (daysAgo * 24 * 60 * 60);
-    const ts = db.prepare('SELECT timestamp FROM scores WHERE timestamp <= ? AND season = ? ORDER BY timestamp DESC LIMIT 1').get(cutoff, CURRENT_SEASON) as { timestamp: number } | undefined;
-    if (!ts) return [];
-    targetTimestamp = ts.timestamp;
+    const tsRes = await pool.query('SELECT timestamp FROM scores WHERE timestamp <= $1 AND season = $2 ORDER BY timestamp DESC LIMIT 1', [cutoff, CURRENT_SEASON]);
+    if (tsRes.rows.length === 0) return [];
+    targetTimestamp = tsRes.rows[0].timestamp;
   }
 
-  const placeholders = names.map(() => '?').join(',');
-  return db.prepare(`
+  const result = await pool.query(`
     SELECT * FROM scores 
-    WHERE timestamp = ? AND name IN (${placeholders}) AND season = ?
+    WHERE timestamp = $1 AND name = ANY($2) AND season = $3
     ORDER BY rank ASC
-  `).all(targetTimestamp, ...names, CURRENT_SEASON) as ScoreRow[];
+  `, [targetTimestamp, names, CURRENT_SEASON]);
+
+  return result.rows.map(row => ({
+    name: row.name,
+    rank: row.rank,
+    rankScore: row.rankscore,
+    league: row.league,
+    leagueNumber: row.leaguenumber,
+    clubTag: row.clubtag,
+    timestamp: row.timestamp,
+    season: row.season
+  }));
 }
 
-export function getLeaderboardAroundPlayer(name: string, limit: number = 50) {
-  const latestTimestamp = db.prepare('SELECT MAX(timestamp) as maxTs FROM scores WHERE season = ?').get(CURRENT_SEASON) as { maxTs: number };
-  if (!latestTimestamp || !latestTimestamp.maxTs) return [];
+export async function getLeaderboardAroundPlayer(name: string, limit: number = 50): Promise<ScoreRow[]> {
+  const latestRes = await pool.query('SELECT MAX(timestamp) as max_ts FROM scores WHERE season = $1', [CURRENT_SEASON]);
+  const latestTimestamp = latestRes.rows[0]?.max_ts;
+  if (!latestTimestamp) return [];
 
-  const player = db.prepare(`
+  const playerRes = await pool.query(`
     SELECT rank FROM scores 
-    WHERE name = ? AND timestamp = ? AND season = ?
-  `).get(name, latestTimestamp.maxTs, CURRENT_SEASON) as { rank: number } | undefined;
+    WHERE name = $1 AND timestamp = $2 AND season = $3
+  `, [name, latestTimestamp, CURRENT_SEASON]);
 
-  if (!player) return [];
+  if (playerRes.rows.length === 0) return [];
+  const playerRank = playerRes.rows[0].rank;
 
-  const offset = Math.max(1, player.rank - Math.floor(limit / 2));
+  const offset = Math.max(0, playerRank - Math.floor(limit / 2) - 1);
   
-  return db.prepare(`
+  const result = await pool.query(`
     SELECT * FROM scores 
-    WHERE timestamp = ? AND season = ?
+    WHERE timestamp = $1 AND season = $2
     ORDER BY rank ASC 
-    LIMIT ? OFFSET ?
-  `).all(latestTimestamp.maxTs, CURRENT_SEASON, limit, offset - 1) as ScoreRow[];
+    LIMIT $3 OFFSET $4
+  `, [latestTimestamp, CURRENT_SEASON, limit, offset]);
+
+  return result.rows.map(row => ({
+    name: row.name,
+    rank: row.rank,
+    rankScore: row.rankscore,
+    league: row.league,
+    leagueNumber: row.leaguenumber,
+    clubTag: row.clubtag,
+    timestamp: row.timestamp,
+    season: row.season
+  }));
 }
+
+export default pool;

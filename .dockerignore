@@ -3,3 +3,4 @@ dist
 data
 *.sqlite
 .env
+postgres_data

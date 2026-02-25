@@ -5,6 +5,7 @@ This Discord bot automatically fetches "The Finals" leaderboard scores every 10 
 ## Features
 
 - **Cron Job**: Fetches data from The Finals API every 10 minutes.
+- **Taunts**: Features 156 unique and varied taunts to spice up the competition.
 - **Database**: Records score history for the top 10,000 players.
 - **`/rank` command**: 
     - `name` (required): Player name (e.g., `Mozzy#3563`).

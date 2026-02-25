@@ -5,5 +5,16 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    container_name: the-finals-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: botuser
+      POSTGRES_PASSWORD: botpassword
+      POSTGRES_DB: finalsdb
     volumes:
-      - ./data:/app/data
+      - ./postgres_data:/var/lib/postgresql/data

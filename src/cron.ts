@@ -1,6 +1,6 @@
 import axios from 'axios';
 import cron from 'node-cron';
-import { saveScores, ScoreRow } from './db';
+import { saveScores, ScoreRow, deleteOldScores, getLastTimestamp } from './db';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -9,7 +9,7 @@ const SEASON = process.env.THE_FINALS_SEASON || 's4';
 const API_URL = `https://api.the-finals-leaderboard.com/v1/leaderboard/${SEASON}/crossplay`;
 
 export async function startCron() {
-  console.log(`Cron started: fetching scores every 10 minutes for season ${SEASON}`);
+  console.log(`Cron started: fetching scores every 45 minutes for season ${SEASON}`);
   
   const fetchAndSave = async () => {
     try {
@@ -29,8 +29,9 @@ export async function startCron() {
           season: SEASON
         }));
 
-        saveScores(scores);
-        console.log(`[${new Date().toISOString()}] Successfully saved ${scores.length} scores.`);
+        await saveScores(scores);
+        await deleteOldScores(3); // Delete data older than 3 months
+        console.log(`[${new Date().toISOString()}] Successfully saved ${scores.length} scores and cleaned old data.`);
       } else {
         console.error('Invalid API response format');
       }
@@ -39,9 +40,17 @@ export async function startCron() {
     }
   };
 
-  // Run immediately on start
-  await fetchAndSave();
+  // Run immediately on start if data is older than 45 minutes
+  const lastTs = await getLastTimestamp();
+  const fortyFiveMinutesAgo = Math.floor(Date.now() / 1000) - (45 * 60);
+  
+  if (lastTs < fortyFiveMinutesAgo) {
+    console.log(`[${new Date().toISOString()}] Last update was more than 45 minutes ago (or no data), running initial fetch...`);
+    await fetchAndSave();
+  } else {
+    console.log(`[${new Date().toISOString()}] Recent data found (less than 45 minutes old), skipping initial fetch.`);
+  }
 
-  // Run every 10 minutes
-  cron.schedule('*/10 * * * *', fetchAndSave);
+  // Run every 45 minutes
+  cron.schedule('*/45 * * * *', fetchAndSave);
 }

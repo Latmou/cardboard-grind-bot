@@ -68,7 +68,7 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
   try {
-    let scores = getPlayerScores(name, days);
+    let scores = await getPlayerScores(name, days);
 
     if (scores.length === 0) {
       await interaction.editReply(`No scores found for player (or partial search) **${name}** over the last **${days}** days.`);
@@ -94,6 +94,8 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
       days,
       mode
     });
+
+    console.log(`[${new Date().toISOString()}] Selected Chart Taunt for ${actualName}: "${taunt}"`);
 
     await interaction.editReply({
       content: taunt,
@@ -123,12 +125,12 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       // Note: This requires GuildMembers intent and might be slow for large guilds
       const members = await interaction.guild.members.fetch();
       const memberNames = members.map(m => m.user.username);
-      players = getPlayersByNames(memberNames);
+      players = await getPlayersByNames(memberNames);
       // Limit to top 50
       players = players.slice(0, 50);
     } else if (nameOption) {
       // First, try to find the exact name or partial matches
-      const initialScores = getPlayerScores(nameOption, 1);
+      const initialScores = await getPlayerScores(nameOption, 1);
       const uniqueNames = Array.from(new Set(initialScores.map(s => s.name)));
 
       if (uniqueNames.length === 0) {
@@ -137,9 +139,9 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       }
 
       const actualName = getBestMatch(nameOption, uniqueNames);
-      players = getLeaderboardAroundPlayer(actualName, 50);
+      players = await getLeaderboardAroundPlayer(actualName, 50);
     } else {
-      players = getTopPlayers(50);
+      players = await getTopPlayers(50);
     }
 
     if (players.length === 0) {
@@ -151,7 +153,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     if (guildOption) {
       const members = await interaction.guild!.members.fetch();
       const memberNames = members.map(m => m.user.username);
-      previousPlayers = getPlayersByNames(memberNames, 1); // 1 day ago
+      previousPlayers = await getPlayersByNames(memberNames, 1); // 1 day ago
     }
 
     const isTop = players[0].rank === 1;
@@ -163,6 +165,8 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       topPlayers: players,
       previousTopPlayers: previousPlayers
     });
+
+    console.log(`[${new Date().toISOString()}] Selected Leaderboard Taunt: "${taunt}"`);
 
     let response = `${taunt}\n\`\`\`\n`;
     response += `Rank | Name${' '.repeat(20)} | Score\n`;

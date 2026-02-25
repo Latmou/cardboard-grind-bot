@@ -115,7 +115,6 @@ export async function generateRankChart(name: string, data: ScoreRow[], days: nu
           },
           ticks: {
             color: '#e8e6e3',
-            maxRotation: 0,
             autoSkip: true,
             maxTicksLimit: 10
           },

@@ -12,7 +12,8 @@ export function startBot() {
   const client = new Client({ 
     intents: [
       GatewayIntentBits.Guilds, 
-      GatewayIntentBits.GuildMembers
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildPresences
     ],
     presence: {
       status: 'online',
@@ -23,8 +24,19 @@ export function startBot() {
     }
   });
 
-  client.once(Events.ClientReady, c => {
+  client.once(Events.ClientReady, async c => {
     console.log(`Ready! Logged in as ${c.user.tag}`);
+    console.log(`Presence: ${c.user.presence?.status}`);
+    console.log(`Guilds: ${c.guilds.cache.size}`);
+    
+    // Explicitly set presence again after ready, just in case
+    c.user.setPresence({
+      status: 'online',
+      activities: [{
+        name: 'The Finals Leaderboard',
+        type: ActivityType.Watching
+      }]
+    });
   });
 
   client.on(Events.InteractionCreate, async interaction => {

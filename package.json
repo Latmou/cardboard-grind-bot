@@ -1,0 +1,30 @@
+{
+  "name": "cardboard-grind-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for The Finals leaderboard",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "register": "node dist/register-commands.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "better-sqlite3": "^11.0.0",
+    "chart.js": "^3.9.1",
+    "chartjs-node-canvas": "^4.1.6",
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.3.1",
+    "moment": "^2.29.4",
+    "node-cron": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^20.8.0",
+    "@types/node-cron": "^3.0.11",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.5.3"
+  },
+  "private": true
+}

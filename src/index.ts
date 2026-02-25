@@ -9,17 +9,36 @@ dotenv.config();
 async function main() {
   console.log('Starting Cardboard Grind Bot...');
   
-  // Initialize database
-  await initDb();
+  try {
+    // Initialize database
+    await initDb();
+    console.log('Database initialized.');
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    // Continue anyway, bot might still work for some things or we want it online to show it's "alive"
+  }
   
-  // Register commands if needed (optional, can be done via separate script or here)
-  await registerCommands();
+  try {
+    // Register commands if needed
+    await registerCommands();
+  } catch (error) {
+    console.error('Failed to register commands:', error);
+  }
   
-  // Start the cron job
-  await startCron();
+  try {
+    // Start the cron job
+    await startCron();
+  } catch (error) {
+    console.error('Failed to start cron job:', error);
+  }
   
   // Start the Discord bot
-  startBot();
+  try {
+    startBot();
+  } catch (error) {
+    console.error('Failed to start Discord bot:', error);
+    process.exit(1);
+  }
 }
 
 main().catch(console.error);

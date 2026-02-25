@@ -26,9 +26,16 @@ This Discord bot automatically fetches "The Finals" leaderboard scores every 45 
 | --- | --- |
 | `DISCORD_TOKEN` | Your Discord bot token. |
 | `DISCORD_CLIENT_ID` | Your Discord application ID. |
-| `GUILD_ID` | (Optional) Your server ID for fast command registration. If empty, commands are registered globally (can take up to 1h). |
+| `GUILD_ID` | (Optional) Your server ID for fast command registration. If empty, commands are registered globally (can take up to 1h). See [How to find Guild ID](#how-to-find-guild-id). |
 | `THE_FINALS_SEASON` | Current season for the API (e.g., `s4`). |
 | `DATABASE_URL` | PostgreSQL connection string (default `postgresql://botuser:botpassword@db:5432/finalsdb`). |
+
+### How to find Guild ID?
+1. Open Discord and go to **User Settings** (the gear icon at the bottom left).
+2. Go to **Advanced** (under App Settings).
+3. Enable **Developer Mode**.
+4. Right-click on your server's icon in the server list on the left.
+5. Click **Copy Server ID** (this is your `GUILD_ID`).
 
 ## Bot Configuration (Developer Portal)
 

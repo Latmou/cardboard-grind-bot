@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType } from 'discord.js';
 import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, ScoreRow } from './db';
 import { generateRankChart } from './chart';
 import { Taunt } from './taunt';
@@ -9,7 +9,19 @@ dotenv.config();
 const token = process.env.DISCORD_TOKEN!;
 
 export function startBot() {
-  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+  const client = new Client({ 
+    intents: [
+      GatewayIntentBits.Guilds, 
+      GatewayIntentBits.GuildMembers
+    ],
+    presence: {
+      status: 'online',
+      activities: [{
+        name: 'The Finals Leaderboard',
+        type: ActivityType.Watching
+      }]
+    }
+  });
 
   client.once(Events.ClientReady, c => {
     console.log(`Ready! Logged in as ${c.user.tag}`);

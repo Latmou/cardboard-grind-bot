@@ -14,7 +14,7 @@ const commands = [
     .addStringOption(option =>
       option.setName('name')
         .setDescription('Player name (e.g., Mozzy#3563)')
-        .setRequired(true)
+        .setRequired(false)
         .setMinLength(3))
     .addIntegerOption(option =>
       option.setName('days')
@@ -28,7 +28,7 @@ const commands = [
     .addStringOption(option =>
       option.setName('name')
         .setDescription('Player name (e.g., Mozzy#3563)')
-        .setRequired(true)
+        .setRequired(false)
         .setMinLength(3))
     .addIntegerOption(option =>
       option.setName('days')

@@ -217,4 +217,12 @@ export async function getRegisteredUsers(discordIds: string[]): Promise<{ discor
   return result.rows;
 }
 
+export async function getRegisteredUser(discordId: string): Promise<string | null> {
+  const result = await pool.query(`
+    SELECT embark_id FROM users
+    WHERE discord_id = $1
+  `, [discordId]);
+  return result.rows.length > 0 ? result.rows[0].embark_id : null;
+}
+
 export default pool;

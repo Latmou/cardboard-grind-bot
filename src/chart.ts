@@ -20,13 +20,23 @@ export async function generateRankChart(name: string, data: ScoreRow[], days: nu
     }
   }
 
+  const sortedExistingHours = Array.from(existingDataMap.keys()).sort((a, b) => a - b);
+
   // 2. Determine the full range of hours requested
   const now = moment();
-  const startHour = moment().subtract(days, 'days').startOf('hour');
-  const endHour = now.startOf('hour');
+  const requestedStartHour = moment().subtract(days, 'days').startOf('hour');
+  
+  if (sortedExistingHours.length === 0) return Buffer.from([]);
+
+  const firstDataHour = moment.unix(sortedExistingHours[0]).startOf('hour');
+  const lastDataHour = moment.unix(sortedExistingHours[sortedExistingHours.length - 1]).startOf('hour');
+
+  // Start from the later of (requested start) and (first data point)
+  const startHour = moment.max(requestedStartHour, firstDataHour);
+  // End at the last data point (we don't want to fill forward to "now" if data is missing)
+  const endHour = lastDataHour;
   
   const filledData: { label: string, value: number }[] = [];
-  const sortedExistingHours = Array.from(existingDataMap.keys()).sort((a, b) => a - b);
 
   let currentHour = moment(startHour);
   while (currentHour.isSameOrBefore(endHour)) {

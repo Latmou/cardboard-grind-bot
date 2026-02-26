@@ -1,5 +1,5 @@
 import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType } from 'discord.js';
-import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers } from './db';
+import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers, getRegisteredUser } from './db';
 import { generateRankChart } from './chart';
 import { Taunt } from './taunt';
 import dotenv from 'dotenv';
@@ -95,9 +95,20 @@ function getBestMatch(search: string, names: string[]): string {
 }
 
 async function handleChartCommand(interaction: ChatInputCommandInteraction) {
-  const name = interaction.options.getString('name', true);
+  let name = interaction.options.getString('name');
   const days = interaction.options.getInteger('days') || 14;
   const mode = interaction.commandName === 'rank' ? 'rank' : 'rankScore';
+
+  if (!name) {
+    name = await getRegisteredUser(interaction.user.id);
+    if (!name) {
+      await interaction.reply({ 
+        content: 'You haven\'t provided a player name and you are not registered. Use `/register [embark_id]` to register your Embark ID or provide a name with this command.', 
+        ephemeral: true 
+      });
+      return;
+    }
+  }
 
   if (name.length < 3) {
     await interaction.reply({ content: 'Please provide at least 3 characters for the name search.', ephemeral: true });
@@ -139,7 +150,7 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
     console.log(`[${new Date().toISOString()}] Selected Chart Taunt for ${actualName}: "${taunt}"`);
 
     const lastUpdateTs = await getLastTimestamp();
-    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString();
+    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString('en-US', { timeZoneName: 'short' });
     const footer = `\n*Last data update: ${lastUpdateDate}*`;
 
     await interaction.editReply({
@@ -224,7 +235,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     console.log(`[${new Date().toISOString()}] Selected Leaderboard Taunt: "${taunt}"`);
 
     const lastUpdateTs = await getLastTimestamp();
-    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString();
+    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString('en-US', { timeZoneName: 'short' });
     const footer = `\n*Last data update: ${lastUpdateDate}*`;
 
     let response = `${taunt}\n\`\`\`\n`;

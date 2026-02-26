@@ -259,17 +259,17 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     let response = `${taunt}\n\`\`\`\n`;
     if (guildOption) {
       response += `Pos | Name${' '.repeat(20)} | Score | Rank\n`;
-      response += `-`.repeat(46) + `\n`;
+      response += `-`.repeat(51) + `\n`;
     } else {
-      response += `Rank | Name${' '.repeat(20)} | Score | Rank\n`;
-      response += `-`.repeat(40) + `\n`;
+      response += `Rank | Name${' '.repeat(20)} | Score\n`;
+      response += `-`.repeat(42) + `\n`;
     }
 
     let pos = 1;
     for (const p of players) {
-      const rankStr = p.rank.toString().padStart(4, ' ');
+      const rankStr = p.rank.toLocaleString().padStart(6, ' ');
       const nameStr = p.name.padEnd(24, ' ');
-      const scoreStr = p.rankScore.toLocaleString().padStart(8, ' ');
+      const scoreStr = p.rankScore.toLocaleString().padStart(7, ' ');
       let line = '';
       if (nameOption && p.name.toLowerCase().trim().includes(nameOption.toLowerCase())) {
         line = '>';

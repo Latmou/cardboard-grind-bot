@@ -50,6 +50,16 @@ const commands = [
     .setContexts([0, 1, 2])
     .setIntegrationTypes([0, 1]),
   new SlashCommandBuilder()
+    .setName('register')
+    .setDescription('Register your Embark ID (e.g., Mozzy#3563)')
+    .addStringOption(option =>
+      option.setName('embark_id')
+        .setDescription('Your Embark ID (e.g., Mozzy#3563)')
+        .setRequired(true)
+        .setMinLength(3))
+    .setContexts([0, 1, 2])
+    .setIntegrationTypes([0, 1]),
+  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Displays help information and available commands')
     .setContexts([0, 1, 2])

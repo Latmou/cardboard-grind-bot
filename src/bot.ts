@@ -1,5 +1,5 @@
 import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType } from 'discord.js';
-import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow } from './db';
+import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers } from './db';
 import { generateRankChart } from './chart';
 import { Taunt } from './taunt';
 import dotenv from 'dotenv';
@@ -48,10 +48,25 @@ export function startBot() {
       await handleChartCommand(interaction);
     } else if (interaction.commandName === 'leaderboard') {
       await handleLeaderboardCommand(interaction);
+    } else if (interaction.commandName === 'register') {
+      await handleRegisterCommand(interaction);
     } else if (interaction.commandName === 'help') {
       await handleHelpCommand(interaction);
     }
   });
+
+  async function handleRegisterCommand(interaction: ChatInputCommandInteraction) {
+    const embarkId = interaction.options.getString('embark_id', true);
+    const discordId = interaction.user.id;
+
+    try {
+      await registerUser(discordId, embarkId);
+      await interaction.reply({ content: `Successfully registered your Embark ID as **${embarkId}**.`, ephemeral: true });
+    } catch (error) {
+      console.error(error);
+      await interaction.reply({ content: 'An error occurred while registering your Embark ID.', ephemeral: true });
+    }
+  }
 
   client.login(token);
 }
@@ -154,8 +169,16 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       // Get all members of the guild
       // Note: This requires GuildMembers intent and might be slow for large guilds
       const members = await interaction.guild.members.fetch();
-      const memberNames = members.map(m => m.user.username);
-      players = await getPlayersByNames(memberNames);
+      const memberIds = members.map(m => m.user.id);
+      const registeredUsers = await getRegisteredUsers(memberIds);
+      const embarkNames = registeredUsers.map(u => u.embark_id);
+      
+      if (embarkNames.length === 0) {
+        await interaction.editReply('No registered users found in this server. Use `/register` to register your Embark ID.');
+        return;
+      }
+      
+      players = await getPlayersByNames(embarkNames);
       // Limit to top 50
       players = players.slice(0, 50);
     } else if (nameOption) {
@@ -182,8 +205,10 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     let previousPlayers: ScoreRow[] = [];
     if (guildOption) {
       const members = await interaction.guild!.members.fetch();
-      const memberNames = members.map(m => m.user.username);
-      previousPlayers = await getPlayersByNames(memberNames, 1); // 1 day ago
+      const memberIds = members.map(m => m.user.id);
+      const registeredUsers = await getRegisteredUsers(memberIds);
+      const embarkNames = registeredUsers.map(u => u.embark_id);
+      previousPlayers = await getPlayersByNames(embarkNames, 1); // 1 day ago
     }
 
     const isTop = players[0].rank === 1;
@@ -241,8 +266,9 @@ This bot fetches and visualizes leaderboard data for "The Finals".
 • \`/rs [name] [days]\`: Displays a player's **rank score** (RS) chart over the last X days.
 • \`/rank [name] [days]\`: Displays a player's **rank position** chart over the last X days.
 • \`/leaderboard\`: Displays the current top 50 players globally.
-• \`/leaderboard guild:true\`: Displays a leaderboard for members of this Discord server.
+• \`/leaderboard guild:true\`: Displays a leaderboard for registered members of this Discord server.
 • \`/leaderboard name:[player]\`: Displays the leaderboard centered around a specific player.
+• \`/register [embark_id]\`: Registers your Embark ID (e.g., Mozzy#3563) for the guild leaderboard.
 • \`/help\`: Displays this help message.
 
 *Note: Use at least 3 characters for player name searches.*

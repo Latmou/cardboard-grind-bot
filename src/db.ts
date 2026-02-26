@@ -24,6 +24,13 @@ export async function initDb() {
   `);
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_name_timestamp_season ON scores (name, timestamp, season)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      discord_id TEXT PRIMARY KEY,
+      embark_id TEXT NOT NULL
+    )
+  `);
 }
 
 export interface ScoreRow {
@@ -192,6 +199,22 @@ export async function getLeaderboardAroundPlayer(name: string, limit: number = 5
     timestamp: row.timestamp,
     season: row.season
   }));
+}
+
+export async function registerUser(discordId: string, embarkId: string): Promise<void> {
+  await pool.query(`
+    INSERT INTO users (discord_id, embark_id)
+    VALUES ($1, $2)
+    ON CONFLICT (discord_id) DO UPDATE SET embark_id = $2
+  `, [discordId, embarkId]);
+}
+
+export async function getRegisteredUsers(discordIds: string[]): Promise<{ discord_id: string, embark_id: string }[]> {
+  const result = await pool.query(`
+    SELECT discord_id, embark_id FROM users
+    WHERE discord_id = ANY($1)
+  `, [discordIds]);
+  return result.rows;
 }
 
 export default pool;

@@ -257,9 +257,15 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     const footer = `\n*Last data update: ${lastUpdateDate}*`;
 
     let response = `${taunt}\n\`\`\`\n`;
-    response += `Rank | Name${' '.repeat(20)} | Score\n`;
-    response += `-`.repeat(40) + `\n`;
+    if (guildOption) {
+      response += `Pos | Name${' '.repeat(20)} | Score | Rank\n`;
+      response += `-`.repeat(46) + `\n`;
+    } else {
+      response += `Rank | Name${' '.repeat(20)} | Score | Rank\n`;
+      response += `-`.repeat(40) + `\n`;
+    }
 
+    let pos = 1;
     for (const p of players) {
       const rankStr = p.rank.toString().padStart(4, ' ');
       const nameStr = p.name.padEnd(24, ' ');
@@ -268,13 +274,20 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       if (nameOption && p.name.toLowerCase().trim().includes(nameOption.toLowerCase())) {
         line = '>';
       }
-      line += `${rankStr} | ${nameStr} | ${scoreStr}\n`;
+      
+      if (guildOption) {
+        const posStr = pos.toString().padStart(3, ' ');
+        line += `${posStr} | ${nameStr} | ${scoreStr} | ${rankStr}\n`;
+      } else {
+        line += `${rankStr} | ${nameStr} | ${scoreStr}\n`;
+      }
       
       if (response.length + line.length + 4 > 2000) {
         response += `...\n`;
         break;
       }
       response += line;
+      pos++;
     }
     response += `\`\`\``;
     response += footer;

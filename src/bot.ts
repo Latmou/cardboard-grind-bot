@@ -258,7 +258,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
 
     let response = `${taunt}\n\`\`\`\n`;
     if (guildOption) {
-      response += `Pos | Name${' '.repeat(20)} | Score${' '.repeat(4)}| Rank\n`;
+      response += `Pos | Name${' '.repeat(20)} | Score${' '.repeat(3)}| Rank\n`;
       response += `-`.repeat(57) + `\n`;
     } else {
       response += `Rank | Name${' '.repeat(20)} | Score\n`;

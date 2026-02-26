@@ -1,5 +1,5 @@
-import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType } from 'discord.js';
-import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers, getRegisteredUser } from './db';
+import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType, MessageFlags } from 'discord.js';
+import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers, getRegisteredUser, getAllRegisteredUsers } from './db';
 import { generateRankChart } from './chart';
 import { Taunt } from './taunt';
 import dotenv from 'dotenv';
@@ -61,10 +61,10 @@ export function startBot() {
 
     try {
       await registerUser(discordId, embarkId);
-      await interaction.reply({ content: `Successfully registered your Embark ID as **${embarkId}**.`, ephemeral: true });
+      await interaction.reply({ content: `Successfully registered your Embark ID as **${embarkId}**.`, flags: [MessageFlags.Ephemeral] });
     } catch (error) {
       console.error(error);
-      await interaction.reply({ content: 'An error occurred while registering your Embark ID.', ephemeral: true });
+      await interaction.reply({ content: 'An error occurred while registering your Embark ID.', flags: [MessageFlags.Ephemeral] });
     }
   }
 
@@ -111,14 +111,14 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
     if (!name) {
       await interaction.reply({ 
         content: 'You haven\'t provided a player name and you are not registered. Use `/register [embark_id]` to register your Embark ID or provide a name with this command.', 
-        ephemeral: true 
+        flags: [MessageFlags.Ephemeral] 
       });
       return;
     }
   }
 
   if (name.length < 3) {
-    await interaction.reply({ content: 'Please provide at least 3 characters for the name search.', ephemeral: true });
+    await interaction.reply({ content: 'Please provide at least 3 characters for the name search.', flags: [MessageFlags.Ephemeral] });
     return;
   }
 
@@ -184,12 +184,20 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
         await interaction.editReply('The `guild` option can only be used within a Discord server (guild).');
         return;
       }
-      // Get all members of the guild
-      // Note: This requires GuildMembers intent and might be slow for large guilds
-      const members = await interaction.guild.members.fetch();
+      // Get all registered users from the database
+      const registeredUsers = await getAllRegisteredUsers();
+      const allRegisteredDiscordIds = registeredUsers.map(u => u.discord_id);
+      
+      // Filter those who are in the current guild
+      // We use members.cache or fetch only what we need. 
+      // Fetching by IDs is more efficient than fetching all.
+      const members = await interaction.guild.members.fetch({ user: allRegisteredDiscordIds });
       const memberIds = members.map(m => m.user.id);
-      const registeredUsers = await getRegisteredUsers(memberIds);
-      const embarkNames = registeredUsers.map(u => u.embark_id);
+      
+      // Only keep embark names for users actually in the guild
+      const embarkNames = registeredUsers
+        .filter(u => memberIds.includes(u.discord_id))
+        .map(u => u.embark_id);
       
       if (embarkNames.length === 0) {
         await interaction.editReply('No registered users found in this server. Use `/register` to register your Embark ID.');
@@ -222,10 +230,13 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
 
     let previousPlayers: ScoreRow[] = [];
     if (guildOption) {
-      const members = await interaction.guild!.members.fetch();
+      const registeredUsers = await getAllRegisteredUsers();
+      const allRegisteredDiscordIds = registeredUsers.map(u => u.discord_id);
+      const members = await interaction.guild!.members.fetch({ user: allRegisteredDiscordIds });
       const memberIds = members.map(m => m.user.id);
-      const registeredUsers = await getRegisteredUsers(memberIds);
-      const embarkNames = registeredUsers.map(u => u.embark_id);
+      const embarkNames = registeredUsers
+        .filter(u => memberIds.includes(u.discord_id))
+        .map(u => u.embark_id);
       previousPlayers = await getPlayersByNames(embarkNames, 1); // 1 day ago
     }
 
@@ -291,5 +302,5 @@ This bot fetches and visualizes leaderboard data for "The Finals".
 
 *Note: Use at least 3 characters for player name searches.*
   `;
-  await interaction.reply({ content: helpMessage, ephemeral: true });
+  await interaction.reply({ content: helpMessage, flags: [MessageFlags.Ephemeral] });
 }

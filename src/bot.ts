@@ -96,8 +96,15 @@ function getBestMatch(search: string, names: string[]): string {
 
 async function handleChartCommand(interaction: ChatInputCommandInteraction) {
   let name = interaction.options.getString('name');
-  const days = interaction.options.getInteger('days') || 14;
+  const days = interaction.options.getInteger('days');
+  const hours = interaction.options.getInteger('hours');
   const mode = interaction.commandName === 'rank' ? 'rank' : 'rankScore';
+
+  // Calculate total duration in hours. Default to 14 days if neither is provided.
+  let totalHours = 0;
+  if (days !== null) totalHours += days * 24;
+  if (hours !== null) totalHours += hours;
+  if (totalHours === 0) totalHours = 14 * 24;
 
   if (!name) {
     name = await getRegisteredUser(interaction.user.id);
@@ -115,15 +122,15 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  console.log(`[${new Date().toISOString()}] Parameters: name=${name}, days=${days}, mode=${mode}`);
+  console.log(`[${new Date().toISOString()}] Parameters: name=${name}, totalHours=${totalHours}, mode=${mode}`);
 
   await interaction.deferReply();
 
   try {
-    let scores = await getPlayerScores(name, days);
+    let scores = await getPlayerScores(name, totalHours);
 
     if (scores.length === 0) {
-      await interaction.editReply(`No scores found for player (or partial search) **${name}** over the last **${days}** days.`);
+      await interaction.editReply(`No scores found for player (or partial search) **${name}** over the last **${totalHours}** hours.`);
       return;
     }
 
@@ -133,7 +140,7 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
     // Filter scores to only include the selected player
     scores = scores.filter(s => s.name === actualName);
 
-    const chartBuffer = await generateRankChart(actualName, scores, days, mode);
+    const chartBuffer = await generateRankChart(actualName, scores, totalHours, mode);
     const attachment = new AttachmentBuilder(chartBuffer, { name: 'chart.png' });
 
     const typeLabel = mode === 'rank' ? 'rank position' : 'score';
@@ -143,14 +150,14 @@ async function handleChartCommand(interaction: ChatInputCommandInteraction) {
       actualName,
       isSelf,
       scores,
-      days,
+      hours: totalHours,
       mode
     });
 
     console.log(`[${new Date().toISOString()}] Selected Chart Taunt for ${actualName}: "${taunt}"`);
 
     const lastUpdateTs = await getLastTimestamp();
-    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString('en-US', { timeZoneName: 'short' });
+    const lastUpdateDate = new Date(lastUpdateTs * 1000).toLocaleString('fr-FR', { timeZoneName: 'short' });
     const footer = `\n*Last data update: ${lastUpdateDate}*`;
 
     await interaction.editReply({
@@ -274,8 +281,8 @@ async function handleHelpCommand(interaction: ChatInputCommandInteraction) {
 This bot fetches and visualizes leaderboard data for "The Finals".
 
 **Available Commands:**
-• \`/rs [name] [days]\`: Displays a player's **rank score** (RS) chart over the last X days.
-• \`/rank [name] [days]\`: Displays a player's **rank position** chart over the last X days.
+• \`/rs [name] [days] [hours]\`: Displays a player's **rank score** (RS) chart over the last X days and Y hours.
+• \`/rank [name] [days] [hours]\`: Displays a player's **rank position** chart over the last X days and Y hours.
 • \`/leaderboard\`: Displays the current top 50 players globally.
 • \`/leaderboard guild:true\`: Displays a leaderboard for registered members of this Discord server.
 • \`/leaderboard name:[player]\`: Displays the leaderboard centered around a specific player.

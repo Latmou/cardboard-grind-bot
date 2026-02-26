@@ -7,9 +7,9 @@ const height = 400;
 
 const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour: '#181a1b' });
 
-export async function generateRankChart(name: string, data: ScoreRow[], days: number, mode: 'rank' | 'rankScore' = 'rankScore') {
+export async function generateRankChart(name: string, data: ScoreRow[], hours: number, mode: 'rank' | 'rankScore' = 'rankScore') {
   if (data.length === 0) return Buffer.from([]);
-
+  
   // 1. Organize existing data by hour (key: start of hour timestamp)
   const existingDataMap = new Map<number, ScoreRow>();
   for (const row of data) {
@@ -24,7 +24,7 @@ export async function generateRankChart(name: string, data: ScoreRow[], days: nu
 
   // 2. Determine the full range of hours requested
   const now = moment();
-  const requestedStartHour = moment().subtract(days, 'days').startOf('hour');
+  const requestedStartHour = moment().subtract(hours, 'hours').startOf('hour');
   
   if (sortedExistingHours.length === 0) return Buffer.from([]);
 

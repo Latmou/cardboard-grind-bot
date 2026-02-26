@@ -20,6 +20,10 @@ const commands = [
       option.setName('days')
         .setDescription('Number of days to display (default: 14)')
         .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('hours')
+        .setDescription('Number of hours to display')
+        .setRequired(false))
     .setContexts([0, 1, 2])
     .setIntegrationTypes([0, 1]),
   new SlashCommandBuilder()
@@ -33,6 +37,10 @@ const commands = [
     .addIntegerOption(option =>
       option.setName('days')
         .setDescription('Number of days to display (default: 14)')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('hours')
+        .setDescription('Number of hours to display')
         .setRequired(false))
     .setContexts([0, 1, 2])
     .setIntegrationTypes([0, 1]),

@@ -4,7 +4,7 @@ export interface ChartContext {
   actualName: string;
   isSelf: boolean;
   scores: ScoreRow[];
-  days: number;
+  hours: number;
   mode: 'rank' | 'rankScore';
 }
 
@@ -44,11 +44,11 @@ export class Taunt {
 
     const isImprovement = mode === 'rank' ? last.rank < first.rank : last.rankScore > first.rankScore;
 
-    // Special Case: Stagnation (no change for at least 3 days if requested days >= 3)
+    // Special Case: Stagnation (no change for at least 72 hours if requested hours >= 72)
     // We also check if there is a gap in timestamps or if all scores in the period are the same
     const allSame = scores.every(s => mode === 'rank' ? s.rank === first.rank : s.rankScore === first.rankScore);
 
-    if (allSame && ctx.days >= 3 && scores.length >= 2) {
+    if (allSame && ctx.hours >= 72 && scores.length >= 2) {
       if (isSelf) {
         return this.getRandom([
           "Finally back to ranked? At this rate, Ruby is just a dream.",

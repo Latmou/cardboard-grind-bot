@@ -92,8 +92,8 @@ export async function getLastTimestamp(): Promise<number> {
   return parseInt(result.rows[0]?.max_ts || '0');
 }
 
-export async function getPlayerScores(name: string, days: number): Promise<ScoreRow[]> {
-  const cutoff = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+export async function getPlayerScores(name: string, hours: number): Promise<ScoreRow[]> {
+  const cutoff = Math.floor(Date.now() / 1000) - (hours * 60 * 60);
   const result = await pool.query(`
     SELECT * FROM scores 
     WHERE name ILIKE $1 AND timestamp >= $2 AND season = $3

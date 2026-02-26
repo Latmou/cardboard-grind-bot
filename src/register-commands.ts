@@ -46,10 +46,10 @@ const commands = [
     .setIntegrationTypes([0, 1]),
   new SlashCommandBuilder()
     .setName('leaderboard')
-    .setDescription('Displays the top players leaderboard')
+    .setDescription('Displays the top players leaderboard (Guild by default)')
     .addBooleanOption(option =>
-      option.setName('guild')
-        .setDescription('Only show players from this Discord server')
+      option.setName('global')
+        .setDescription('Show global leaderboard instead of guild')
         .setRequired(false))
     .addStringOption(option =>
       option.setName('name')

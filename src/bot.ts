@@ -174,14 +174,17 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
   await interaction.deferReply();
 
   try {
-    const guildOption = interaction.options.getBoolean('guild');
+    const globalOption = interaction.options.getBoolean('global');
     const nameOption = interaction.options.getString('name');
 
     let players: ScoreRow[] = [];
 
-    if (guildOption) {
+    // Guild is now default if not global and no name search
+    const isGuild = !globalOption && !nameOption;
+
+    if (isGuild) {
       if (!interaction.guild) {
-        await interaction.editReply('The `guild` option can only be used within a Discord server (guild).');
+        await interaction.editReply('Guild leaderboard can only be used within a Discord server (guild).');
         return;
       }
       // Get all registered users from the database
@@ -229,7 +232,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     }
 
     let previousPlayers: ScoreRow[] = [];
-    if (guildOption) {
+    if (isGuild) {
       const registeredUsers = await getAllRegisteredUsers();
       const allRegisteredDiscordIds = registeredUsers.map(u => u.discord_id);
       const members = await interaction.guild!.members.fetch({ user: allRegisteredDiscordIds });
@@ -245,7 +248,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     const taunt = Taunt.getLeaderboardTaunt({
       isInList,
       isTop,
-      isGuild: !!guildOption,
+      isGuild: !!isGuild,
       topPlayers: players,
       previousTopPlayers: previousPlayers
     });
@@ -257,7 +260,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     const footer = `\n*Last data update: ${lastUpdateDate}*`;
 
     let response = `${taunt}\n\`\`\`\n`;
-    if (guildOption) {
+    if (isGuild) {
       response += `Pos | Name${' '.repeat(20)} | Score${' '.repeat(3)}| Rank\n`;
       response += `-`.repeat(57) + `\n`;
     } else {
@@ -275,7 +278,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
         line = '>';
       }
       
-      if (guildOption) {
+      if (isGuild) {
         const posStr = pos.toString().padStart(3, ' ');
         line += `${posStr} | ${nameStr} | ${scoreStr} | ${rankStr}\n`;
       } else {
@@ -305,15 +308,15 @@ async function handleHelpCommand(interaction: ChatInputCommandInteraction) {
 This bot fetches and visualizes leaderboard data for "The Finals".
 
 **Available Commands:**
-• \`/rs [name] [days] [hours]\`: Displays a player's **rank score** (RS) chart over the last X days and Y hours.
-• \`/rank [name] [days] [hours]\`: Displays a player's **rank position** chart over the last X days and Y hours.
-• \`/leaderboard\`: Displays the current top 50 players globally.
-• \`/leaderboard guild:true\`: Displays a leaderboard for registered members of this Discord server.
+• \`/rs [name] [days] [hours]\`: Displays a player's **rank score** (RS) chart. If no name is provided, uses your registered Embark ID.
+• \`/rank [name] [days] [hours]\`: Displays a player's **rank position** chart. If no name is provided, uses your registered Embark ID.
+• \`/leaderboard\`: Displays a leaderboard for registered members of this Discord server (default).
+• \`/leaderboard global:true\`: Displays the current top 50 players globally.
 • \`/leaderboard name:[player]\`: Displays the leaderboard centered around a specific player.
-• \`/register [embark_id]\`: Registers your Embark ID (e.g., Mozzy#3563) for the guild leaderboard.
+• \`/register <embark_id>\`: Link your Discord ID with your Embark ID (e.g., Mozzy#3563) for personalized charts and the guild leaderboard.
 • \`/help\`: Displays this help message.
 
-*Note: Use at least 3 characters for player name searches.*
+*Note: Use at least 3 characters for player name searches. Duration defaults to 14 days if not specified.*
   `;
   await interaction.reply({ content: helpMessage, flags: [MessageFlags.Ephemeral] });
 }

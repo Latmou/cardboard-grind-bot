@@ -31,6 +31,15 @@ export async function initDb() {
       embark_id TEXT NOT NULL
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS guild_roles (
+      guild_id TEXT NOT NULL,
+      role_name TEXT NOT NULL,
+      role_id TEXT NOT NULL,
+      PRIMARY KEY (guild_id, role_name)
+    )
+  `);
 }
 
 export interface ScoreRow {
@@ -289,6 +298,22 @@ export async function getLatestScoreForUser(embarkId: string): Promise<ScoreRow 
     timestamp: row.timestamp,
     season: row.season
   };
+}
+
+export async function getStoredRoleId(guildId: string, roleName: string): Promise<string | null> {
+  const result = await pool.query(
+    'SELECT role_id FROM guild_roles WHERE guild_id = $1 AND role_name = $2',
+    [guildId, roleName]
+  );
+  return result.rows[0]?.role_id || null;
+}
+
+export async function saveStoredRoleId(guildId: string, roleName: string, roleId: string) {
+  await pool.query(`
+    INSERT INTO guild_roles (guild_id, role_name, role_id)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (guild_id, role_name) DO UPDATE SET role_id = $3
+  `, [guildId, roleName, roleId]);
 }
 
 export default pool;

@@ -1,13 +1,13 @@
 import { Client, Guild, Role } from 'discord.js';
-import { ScoreRow, getLatestScoresForRegisteredUsers, getLatestScoreForUser } from './db';
+import { ScoreRow, getLatestScoresForRegisteredUsers, getLatestScoreForUser, getStoredRoleId, saveStoredRoleId } from './db';
 
 const RANK_ROLES = [
   'Ruby',
-  'Diamond 1', 'Diamond 2', 'Diamond 3', 'Diamond 4',
-  'Platinum 1', 'Platinum 2', 'Platinum 3', 'Platinum 4',
-  'Gold 1', 'Gold 2', 'Gold 3', 'Gold 4',
-  'Silver 1', 'Silver 2', 'Silver 3', 'Silver 4',
-  'Bronze 1', 'Bronze 2', 'Bronze 3', 'Bronze 4'
+  'Diamond',
+  'Platinum',
+  'Gold',
+  'Silver',
+  'Bronze'
 ];
 
 export async function syncUserRoles(client: Client) {
@@ -39,7 +39,7 @@ export async function syncUserRoles(client: Client) {
 
         // Check if user already has the correct role
         if (member.roles.cache.has(targetRole.id)) {
-          // Check if user has other rank roles they shouldn't have
+          // Check if user has other rank roles (including deprecated ones) they shouldn't have
           const rolesToRemove = RANK_ROLES
             .filter(name => name !== currentRankRoleName)
             .map(name => rolesMap.get(name))
@@ -52,7 +52,7 @@ export async function syncUserRoles(client: Client) {
           continue;
         }
 
-        // Remove all other rank roles
+        // Remove all other rank roles (including deprecated ones)
         const allOtherRankRoles = RANK_ROLES
           .map(name => rolesMap.get(name))
           .filter((role): role is Role => !!role && member.roles.cache.has(role.id));
@@ -85,8 +85,8 @@ export async function syncSingleUserRoles(guild: Guild, discordId: string, embar
   const member = await guild.members.fetch(discordId).catch(() => null);
   if (!member) return;
 
-  // Remove other rank roles
-  const rolesToRemove = RANK_ROLES
+  // Remove other rank roles (including deprecated ones)
+  const rolesToRemove = ALL_RANK_ROLES_TO_CLEAN
     .map(name => rolesMap.get(name))
     .filter((role): role is Role => !!role && member.roles.cache.has(role.id) && role.id !== targetRole.id);
 
@@ -104,9 +104,23 @@ async function ensureRolesExist(guild: Guild): Promise<Map<string, Role>> {
   const rolesMap = new Map<string, Role>();
   const existingRoles = await guild.roles.fetch();
 
-  for (const roleName of RANK_ROLES) {
-    let role = existingRoles.find(r => r.name === roleName);
+  // Handle current roles
+  for (const roleName of ALL_RANK_ROLES_TO_CLEAN) {
+    let role: Role | null | undefined = null;
+
+    // 1. Try to find by stored ID in DB
+    const storedRoleId = await getStoredRoleId(guild.id, roleName);
+    if (storedRoleId) {
+      role = existingRoles.get(storedRoleId);
+    }
+
+    // 2. Fallback: Search by name (case-insensitive)
     if (!role) {
+      role = existingRoles.find(r => r.name.toLowerCase() === roleName.toLowerCase());
+    }
+
+    // 3. Create only if it's one of the current target roles
+    if (!role && RANK_ROLES.includes(roleName)) {
       try {
         role = await guild.roles.create({
           name: roleName,
@@ -119,20 +133,23 @@ async function ensureRolesExist(guild: Guild): Promise<Map<string, Role>> {
         continue;
       }
     }
-    rolesMap.set(roleName, role);
+
+    // Store/Update ID in DB if we found/created it
+    if (role) {
+      await saveStoredRoleId(guild.id, roleName, role.id);
+      rolesMap.set(roleName, role);
+    }
   }
   return rolesMap;
 }
 
 function getRankRoleName(score: ScoreRow): string | null {
-  if (score.rank > 0 && score.rank < 500) {
+  if (score.rank > 0 && score.rank <= 500) {
     return 'Ruby';
   }
 
   if (!score.league) return null;
   
-  // The API usually returns league as "Diamond", "Platinum", etc. 
-  // and leagueNumber as 1, 2, 3, 4.
-  // We want to combine them like "Diamond 1"
-  return `${score.league} ${score.leagueNumber}`;
+  // Return only the league name (Diamond, Platinum, etc.)
+  return score.league;
 }

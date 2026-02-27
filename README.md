@@ -66,11 +66,11 @@ This Discord bot automatically fetches "The Finals" leaderboard scores every 45 
 ### Rank Roles
 The bot automatically creates and manages the following roles based on users' current leaderboard rank:
 - Ruby (Top 500 players)
-- Diamond 1-4
-- Platinum 1-4
-- Gold 1-4
-- Silver 1-4
-- Bronze 1-4
+- Diamond
+- Platinum
+- Gold
+- Silver
+- Bronze
 
 These roles are set to "hoist" (display separately in the sidebar). Roles are updated every 45 minutes when the leaderboard data is refreshed.
 

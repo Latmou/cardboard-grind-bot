@@ -34,10 +34,11 @@ export async function syncUserRoles(client: Client) {
         const currentRankRoleName = getRankRoleName(data.score);
         if (!currentRankRoleName) continue;
 
-        console.log(`[DEBUG]: ${JSON.stringify(rolesMap)} ${currentRankRoleName}`)
-
         const targetRole = rolesMap.get(currentRankRoleName);
-        if (!targetRole) continue;
+        if (!targetRole) {
+          console.warn(`[DEBUG]: Role ${currentRankRoleName} not found in rolesMap for guild ${guild.name}`);
+          continue;
+        }
 
         // Check if user already has the correct role
         if (member.roles.cache.has(targetRole.id)) {
@@ -104,7 +105,9 @@ export async function syncSingleUserRoles(guild: Guild, discordId: string, embar
 
 async function ensureRolesExist(guild: Guild): Promise<Map<string, Role>> {
   const rolesMap = new Map<string, Role>();
-  const existingRoles = await guild.roles.fetch();
+  const fetchedRoles = await guild.roles.fetch();
+  
+  console.log(`[DEBUG]: Fetched ${fetchedRoles.size} roles for guild ${guild.name}`);
 
   // Handle current roles
   for (const roleName of RANK_ROLES) {
@@ -113,16 +116,18 @@ async function ensureRolesExist(guild: Guild): Promise<Map<string, Role>> {
     // 1. Try to find by stored ID in DB
     const storedRoleId = await getStoredRoleId(guild.id, roleName);
     if (storedRoleId) {
-      role = existingRoles.get(storedRoleId);
+      role = fetchedRoles.get(storedRoleId);
+      if (role) console.log(`[DEBUG]: Found role ${roleName} by stored ID: ${storedRoleId}`);
     }
 
     // 2. Fallback: Search by name (case-insensitive)
     if (!role) {
-      role = existingRoles.find(r => r.name.toLowerCase() === roleName.toLowerCase());
+      role = fetchedRoles.find(r => r.name.toLowerCase() === roleName.toLowerCase());
+      if (role) console.log(`[DEBUG]: Found role ${roleName} by name search`);
     }
 
     // 3. Create only if it's one of the current target roles
-    if (!role && RANK_ROLES.includes(roleName)) {
+    if (!role) {
       try {
         role = await guild.roles.create({
           name: roleName,
@@ -142,6 +147,8 @@ async function ensureRolesExist(guild: Guild): Promise<Map<string, Role>> {
       rolesMap.set(roleName, role);
     }
   }
+
+  console.log(`[DEBUG]: ensureRolesExist for ${guild.name} finished. rolesMap size: ${rolesMap.size}`);
   return rolesMap;
 }
 
@@ -153,5 +160,5 @@ function getRankRoleName(score: ScoreRow): string | null {
   if (!score.league) return null;
   
   // Return only the league name (Diamond, Platinum, etc.)
-  return score.league;
+  return score.league.split(' ')[0];
 }

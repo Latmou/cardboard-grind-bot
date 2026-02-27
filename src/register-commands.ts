@@ -59,7 +59,7 @@ const commands = [
     .setIntegrationTypes([0, 1]),
   new SlashCommandBuilder()
     .setName('register')
-    .setDescription('Register your Embark ID (e.g., Mozzy#3563)')
+    .setDescription('Register your Embark ID and update your nickname')
     .addStringOption(option =>
       option.setName('embark_id')
         .setDescription('Your Embark ID (e.g., Mozzy#3563)')

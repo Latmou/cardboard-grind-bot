@@ -1,74 +1,116 @@
 import { Client, Events, GatewayIntentBits, AttachmentBuilder, ChatInputCommandInteraction, ActivityType, MessageFlags } from 'discord.js';
-import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers, getRegisteredUser, getAllRegisteredUsers } from './db';
+import { getPlayerScores, getTopPlayers, getPlayersByNames, getLeaderboardAroundPlayer, getLastTimestamp, ScoreRow, registerUser, getRegisteredUsers, getRegisteredUser, getAllRegisteredUsers, getDiscordIdByEmbarkId } from './db';
 import { generateRankChart } from './chart';
 import { Taunt } from './taunt';
+import { syncSingleUserRoles } from './roles';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const token = process.env.DISCORD_TOKEN!;
 
-export function startBot() {
-  const client = new Client({ 
-    intents: [
-      GatewayIntentBits.Guilds, 
-      GatewayIntentBits.GuildMembers,
-      GatewayIntentBits.GuildPresences
-    ],
-    presence: {
-      status: 'online',
-      activities: [{
-        name: 'The Finals Leaderboard',
-        type: ActivityType.Watching
-      }]
-    }
-  });
-
-  client.once(Events.ClientReady, async c => {
-    console.log(`Ready! Logged in as ${c.user.tag}`);
-    console.log(`Presence: ${c.user.presence?.status}`);
-    console.log(`Guilds: ${c.guilds.cache.size}`);
-    
-    // Explicitly set presence again after ready, just in case
-    c.user.setPresence({
-      status: 'online',
-      activities: [{
-        name: 'The Finals Leaderboard',
-        type: ActivityType.Watching
-      }]
+export function startBot(): Promise<Client> {
+  return new Promise((resolve, reject) => {
+    const client = new Client({ 
+      intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences
+      ],
+      presence: {
+        status: 'online',
+        activities: [{
+          name: 'The Finals Leaderboard',
+          type: ActivityType.Watching
+        }]
+      }
     });
-  });
 
-  client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isChatInputCommand()) return;
+    client.once(Events.ClientReady, async c => {
+      console.log(`Ready! Logged in as ${c.user.tag}`);
+      console.log(`Presence: ${c.user.presence?.status}`);
+      console.log(`Guilds: ${c.guilds.cache.size}`);
+      
+      // Explicitly set presence again after ready, just in case
+      c.user.setPresence({
+        status: 'online',
+        activities: [{
+          name: 'The Finals Leaderboard',
+          type: ActivityType.Watching
+        }]
+      });
+      resolve(client);
+    });
 
-    console.log(`[${new Date().toISOString()}] Command /${interaction.commandName} used by ${interaction.user.tag} (${interaction.user.id}) in guild ${interaction.guild?.name || 'DM'}`);
+    client.on(Events.Error, (error) => {
+      console.error('Discord client error:', error);
+      reject(error);
+    });
 
-    if (interaction.commandName === 'rs' || interaction.commandName === 'rank') {
-      await handleChartCommand(interaction);
-    } else if (interaction.commandName === 'leaderboard') {
-      await handleLeaderboardCommand(interaction);
-    } else if (interaction.commandName === 'register') {
-      await handleRegisterCommand(interaction);
-    } else if (interaction.commandName === 'help') {
-      await handleHelpCommand(interaction);
+    client.on(Events.InteractionCreate, async interaction => {
+      if (!interaction.isChatInputCommand()) return;
+
+      console.log(`[${new Date().toISOString()}] Command /${interaction.commandName} used by ${interaction.user.tag} (${interaction.user.id}) in guild ${interaction.guild?.name || 'DM'}`);
+
+      if (interaction.commandName === 'rs' || interaction.commandName === 'rank') {
+        await handleChartCommand(interaction);
+      } else if (interaction.commandName === 'leaderboard') {
+        await handleLeaderboardCommand(interaction);
+      } else if (interaction.commandName === 'register') {
+        await handleRegisterCommand(interaction);
+      } else if (interaction.commandName === 'help') {
+        await handleHelpCommand(interaction);
+      }
+    });
+
+    async function handleRegisterCommand(interaction: ChatInputCommandInteraction) {
+      const embarkId = interaction.options.getString('embark_id', true);
+      const discordId = interaction.user.id;
+
+      try {
+        const existingUser = await getDiscordIdByEmbarkId(embarkId);
+        if (existingUser && existingUser !== discordId) {
+          await interaction.reply({ 
+            content: `Embark ID **${embarkId}** is already registered to user <@${existingUser}>.`, 
+            flags: [MessageFlags.Ephemeral] 
+          });
+          return;
+        }
+
+        await registerUser(discordId, embarkId);
+        
+        let nicknameStatus = '';
+        if (interaction.guild && interaction.member) {
+          try {
+            // Attempt to change the user's nickname to their Embark ID
+            const member = await interaction.guild.members.fetch(discordId);
+            await member.setNickname(embarkId);
+            nicknameStatus = ' and updated your nickname';
+          } catch (error) {
+            console.error(`Failed to update nickname for user ${discordId}:`, error);
+            nicknameStatus = ' (could not update nickname, please check bot permissions)';
+          }
+
+          try {
+            // Also sync roles upon registration
+            await syncSingleUserRoles(interaction.guild, discordId, embarkId);
+          } catch (error) {
+            console.error(`Failed to sync roles for user ${discordId}:`, error);
+          }
+        }
+
+        await interaction.reply({ 
+          content: `Successfully registered your Embark ID as **${embarkId}**${nicknameStatus}. Your rank role will also be updated.`, 
+          flags: [MessageFlags.Ephemeral] 
+        });
+      } catch (error) {
+        console.error(error);
+        await interaction.reply({ content: 'An error occurred while registering your Embark ID.', flags: [MessageFlags.Ephemeral] });
+      }
     }
+
+    client.login(token).catch(reject);
   });
-
-  async function handleRegisterCommand(interaction: ChatInputCommandInteraction) {
-    const embarkId = interaction.options.getString('embark_id', true);
-    const discordId = interaction.user.id;
-
-    try {
-      await registerUser(discordId, embarkId);
-      await interaction.reply({ content: `Successfully registered your Embark ID as **${embarkId}**.`, flags: [MessageFlags.Ephemeral] });
-    } catch (error) {
-      console.error(error);
-      await interaction.reply({ content: 'An error occurred while registering your Embark ID.', flags: [MessageFlags.Ephemeral] });
-    }
-  }
-
-  client.login(token);
 }
 
 function getBestMatch(search: string, names: string[]): string {

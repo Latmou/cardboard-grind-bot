@@ -1,6 +1,8 @@
 import axios from 'axios';
 import cron from 'node-cron';
 import { saveScores, ScoreRow, deleteOldScores, getLastTimestamp } from './db';
+import { Client } from 'discord.js';
+import { syncUserRoles } from './roles';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,7 +10,7 @@ dotenv.config();
 const SEASON = process.env.THE_FINALS_SEASON || 's4';
 const API_URL = `https://api.the-finals-leaderboard.com/v1/leaderboard/${SEASON}/crossplay`;
 
-export async function startCron() {
+export async function startCron(client: Client) {
   console.log(`Cron started: fetching scores every 45 minutes for season ${SEASON}`);
   
   const fetchAndSave = async () => {
@@ -32,6 +34,9 @@ export async function startCron() {
         await saveScores(scores);
         await deleteOldScores(3); // Delete data older than 3 months
         console.log(`[${new Date().toISOString()}] Successfully saved ${scores.length} scores and cleaned old data.`);
+        
+        // Sync roles after successful fetch
+        await syncUserRoles(client);
       } else {
         console.error('Invalid API response format');
       }
@@ -48,7 +53,8 @@ export async function startCron() {
     console.log(`[${new Date().toISOString()}] Last update was more than 45 minutes ago (or no data), running initial fetch...`);
     await fetchAndSave();
   } else {
-    console.log(`[${new Date().toISOString()}] Recent data found (less than 45 minutes old), skipping initial fetch.`);
+    console.log(`[${new Date().toISOString()}] Recent data found (less than 45 minutes old), syncing roles anyway.`);
+    await syncUserRoles(client);
   }
 
   // Run every 45 minutes

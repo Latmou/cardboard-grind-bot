@@ -34,6 +34,7 @@ async function forceFetch() {
       await saveScores(scores);
       await deleteOldScores(3);
       console.log(`[${new Date().toISOString()}] Successfully saved ${scores.length} scores and cleaned old data.`);
+      console.log('Note: Role synchronization is not performed during force-fetch script to avoid requiring a Discord Client.');
       process.exit(0);
     } else {
       console.error('Invalid API response format');

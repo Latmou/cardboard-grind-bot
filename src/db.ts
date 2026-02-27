@@ -232,4 +232,63 @@ export async function getRegisteredUser(discordId: string): Promise<string | nul
   return result.rows.length > 0 ? result.rows[0].embark_id : null;
 }
 
+export async function getDiscordIdByEmbarkId(embarkId: string): Promise<string | null> {
+  const result = await pool.query(`
+    SELECT discord_id FROM users
+    WHERE embark_id = $1
+  `, [embarkId]);
+  return result.rows.length > 0 ? result.rows[0].discord_id : null;
+}
+
+export async function getLatestScoresForRegisteredUsers(): Promise<{ discord_id: string, embark_id: string, score: ScoreRow }[]> {
+  const latestTimestamp = await getLastTimestamp();
+  if (!latestTimestamp) return [];
+
+  const result = await pool.query(`
+    SELECT u.discord_id, u.embark_id, s.*
+    FROM users u
+    JOIN scores s ON u.embark_id = s.name
+    WHERE s.timestamp = $1 AND s.season = $2
+  `, [latestTimestamp, CURRENT_SEASON]);
+
+  return result.rows.map(row => ({
+    discord_id: row.discord_id,
+    embark_id: row.embark_id,
+    score: {
+      name: row.name,
+      rank: row.rank,
+      rankScore: row.rankscore,
+      league: row.league,
+      leagueNumber: row.leaguenumber,
+      clubTag: row.clubtag,
+      timestamp: row.timestamp,
+      season: row.season
+    }
+  }));
+}
+
+export async function getLatestScoreForUser(embarkId: string): Promise<ScoreRow | null> {
+  const latestTimestamp = await getLastTimestamp();
+  if (!latestTimestamp) return null;
+
+  const result = await pool.query(`
+    SELECT * FROM scores 
+    WHERE name = $1 AND timestamp = $2 AND season = $3
+  `, [embarkId, latestTimestamp, CURRENT_SEASON]);
+
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0];
+  return {
+    name: row.name,
+    rank: row.rank,
+    rankScore: row.rankscore,
+    league: row.league,
+    leagueNumber: row.leaguenumber,
+    clubTag: row.clubtag,
+    timestamp: row.timestamp,
+    season: row.season
+  };
+}
+
 export default pool;

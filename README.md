@@ -44,7 +44,7 @@ This Discord bot automatically fetches "The Finals" leaderboard scores every 45 
 3. In the **Bot** tab, get the `TOKEN`.
 4. Go to **OAuth2** -> **General**, get the `CLIENT ID`.
 5. Go to **OAuth2** -> **URL Generator**, check `bot` and `applications.commands`.
-6. **Crucial**: In the **Bot** tab, scroll down to **Privileged Gateway Intents** and enable **Server Members Intent**. This is required for the `/leaderboard guild:true` feature.
+6. **Crucial**: In the **Bot** tab, scroll down to **Privileged Gateway Intents** and enable **Server Members Intent**. This is required for the `/leaderboard global:false` feature and to allow the bot to change nicknames.
 7. (Optional) In the **OAuth2** -> **URL Generator** tab, you can test the invitation (see Usage section).
 
 ### How to add the bot to your server?
@@ -58,7 +58,21 @@ This Discord bot automatically fetches "The Finals" leaderboard scores every 45 
    - `Send Messages`
    - `Attach Files`
    - `Use Slash Commands`
+   - `Manage Nicknames` (Required to sync name with `/register`)
+   - `Manage Roles` (Required to sync rank roles)
 6. Copy the generated URL at the bottom and paste it into your browser to invite the bot.
+7. **Important**: The bot's role in Discord must be positioned **above** the rank roles (Diamond, Platinum, etc.) and above the users it needs to manage in the server's Role settings.
+
+### Rank Roles
+The bot automatically creates and manages the following roles based on users' current leaderboard rank:
+- Ruby (Top 500 players)
+- Diamond 1-4
+- Platinum 1-4
+- Gold 1-4
+- Silver 1-4
+- Bronze 1-4
+
+These roles are set to "hoist" (display separately in the sidebar). Roles are updated every 45 minutes when the leaderboard data is refreshed.
 
 ### Force data fetch
 You can manually trigger a data fetch from the API using:

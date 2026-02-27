@@ -25,16 +25,16 @@ async function main() {
     console.error('Failed to register commands:', error);
   }
   
-  try {
-    // Start the cron job
-    await startCron();
-  } catch (error) {
-    console.error('Failed to start cron job:', error);
-  }
-  
   // Start the Discord bot
   try {
-    startBot();
+    const client = await startBot();
+    
+    try {
+      // Start the cron job with the bot client
+      await startCron(client);
+    } catch (error) {
+      console.error('Failed to start cron job:', error);
+    }
   } catch (error) {
     console.error('Failed to start Discord bot:', error);
     process.exit(1);

@@ -121,7 +121,7 @@ export async function getPlayerScores(name: string, hours: number): Promise<Scor
   }));
 }
 
-export async function getTopPlayers(limit: number = 50): Promise<ScoreRow[]> {
+export async function getTopPlayers(limit: number = 30): Promise<ScoreRow[]> {
   const latestRes = await pool.query('SELECT MAX(timestamp) as max_ts FROM scores WHERE season = $1', [CURRENT_SEASON]);
   const latestTimestamp = latestRes.rows[0]?.max_ts;
   if (!latestTimestamp) return [];
@@ -176,7 +176,7 @@ export async function getPlayersByNames(names: string[], daysAgo: number = 0): P
   }));
 }
 
-export async function getLeaderboardAroundPlayer(name: string, limit: number = 50): Promise<ScoreRow[]> {
+export async function getLeaderboardAroundPlayer(name: string, limit: number = 30): Promise<ScoreRow[]> {
   const latestRes = await pool.query('SELECT MAX(timestamp) as max_ts FROM scores WHERE season = $1', [CURRENT_SEASON]);
   const latestTimestamp = latestRes.rows[0]?.max_ts;
   if (!latestTimestamp) return [];

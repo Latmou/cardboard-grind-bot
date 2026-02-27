@@ -250,8 +250,8 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       }
       
       players = await getPlayersByNames(embarkNames);
-      // Limit to top 50
-      players = players.slice(0, 50);
+      // Limit to top 30
+      players = players.slice(0, 30);
     } else if (nameOption) {
       // First, try to find the exact name or partial matches
       const initialScores = await getPlayerScores(nameOption, 1);
@@ -263,9 +263,9 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
       }
 
       const actualName = getBestMatch(nameOption, uniqueNames);
-      players = await getLeaderboardAroundPlayer(actualName, 50);
+      players = await getLeaderboardAroundPlayer(actualName, 30);
     } else {
-      players = await getTopPlayers(50);
+      players = await getTopPlayers(30);
     }
 
     if (players.length === 0) {
@@ -353,7 +353,7 @@ This bot fetches and visualizes leaderboard data for "The Finals".
 • \`/rs [name] [days] [hours]\`: Displays a player's **rank score** (RS) chart. If no name is provided, uses your registered Embark ID.
 • \`/rank [name] [days] [hours]\`: Displays a player's **rank position** chart. If no name is provided, uses your registered Embark ID.
 • \`/leaderboard\`: Displays a leaderboard for registered members of this Discord server (default).
-• \`/leaderboard global:true\`: Displays the current top 50 players globally.
+• \`/leaderboard global:true\`: Displays the current top 30 players globally.
 • \`/leaderboard name:[player]\`: Displays the leaderboard centered around a specific player.
 • \`/register <embark_id>\`: Link your Discord ID with your Embark ID (e.g., Mozzy#3563) for personalized charts and the guild leaderboard.
 • \`/help\`: Displays this help message.

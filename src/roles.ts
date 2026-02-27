@@ -86,7 +86,7 @@ export async function syncSingleUserRoles(guild: Guild, discordId: string, embar
   if (!member) return;
 
   // Remove other rank roles (including deprecated ones)
-  const rolesToRemove = ALL_RANK_ROLES_TO_CLEAN
+  const rolesToRemove = RANK_ROLES
     .map(name => rolesMap.get(name))
     .filter((role): role is Role => !!role && member.roles.cache.has(role.id) && role.id !== targetRole.id);
 
@@ -105,7 +105,7 @@ async function ensureRolesExist(guild: Guild): Promise<Map<string, Role>> {
   const existingRoles = await guild.roles.fetch();
 
   // Handle current roles
-  for (const roleName of ALL_RANK_ROLES_TO_CLEAN) {
+  for (const roleName of RANK_ROLES) {
     let role: Role | null | undefined = null;
 
     // 1. Try to find by stored ID in DB

@@ -34,6 +34,8 @@ export async function syncUserRoles(client: Client) {
         const currentRankRoleName = getRankRoleName(data.score);
         if (!currentRankRoleName) continue;
 
+        console.log(`[DEBUG]: ${JSON.stringify(rolesMap)} ${currentRankRoleName}`)
+
         const targetRole = rolesMap.get(currentRankRoleName);
         if (!targetRole) continue;
 
